@@ -3,21 +3,21 @@
 set -ex
 
 #these can be parameterised
-test="kv95/enc=false/nodes=1/cpu=32"
+test="ycsb/B/nodes=3"
 branch="origin/master"
 
 #use dates OR hashes, but not both
 #from="2022-07-05 09:00:00Z"
 #to="2022-07-07 22:00:00Z"
-good=41228d10ac5e326328507b98245fc076d67d2ecd
-bad=7405c568e482fbfff4ad2bcba101ef42678d0b1a
+good=29474e57ade2cd43f834be7b4ba8428e80dded0b
+bad=d7808e8a046d37536e4964f51ddb0c6fefc5f1ae
 
 count=4
 duration_mins=10
 
 #bisect_dir="${test//[^[:alnum:]]/-}/${branch//[^[:alnum:]]/-}/$from,$to"
 #explicity set bisect dir
-export BISECT_DIR=/home/miral/workspace/bisections/issues-84882
+export BISECT_DIR=/home/miral/workspace/bisections/ycsb-test
 
 # first-parent is good for release branches where we generally know the merge parents are OK
 # git bisect start --first-parent
@@ -44,6 +44,8 @@ trapped() {
 
 trap 'trapped' INT
 
+# the bisect replay is not even really required since we can effectively
+# use the json to view saved results
 if [ -f "$BISECT_LOG" ]; then
   echo "Bisect log found. Replaying"
   $BISECT_START_CMD
@@ -59,7 +61,7 @@ else
     bad="$(short_hash "$bad")"
   fi
 
-  goodVal="$(get_hash_result "$good")"
+  goodVal=$(avg_ops "$good")
 
   # running in parallel is fine, but building saturates CPU so we do that synchronously
   if [ -z "$goodVal" ]; then
@@ -68,7 +70,7 @@ else
    test_hash "$good" "$test" $count &
   fi
 
-  badVal="$(get_hash_result "$bad")"
+  badVal=$(avg_ops "$bad")
   if [ -z "$badVal" ]; then
    echo "[$bad] No bad threshold specified. Will build/run this hash to collect an initial bad value."
    build_hash "$bad" "$duration_mins"
@@ -79,19 +81,19 @@ else
 
   # testing this variable again here as a way to determine whether we ran the test above
   if [ -z "$goodVal" ]; then
-    goodVal="$(calc_avg_ops "$good" "$test")"
-    set_hash_result "$good" "$goodVal"
+    save_results "$good" "$test"
+    goodVal="$(avg_ops "$good" "$test")"
   fi
 
   if [ -z "$badVal" ]; then
-    badVal="$(calc_avg_ops "$bad" "$test")"
-    set_hash_result "$bad" "$badVal"
+    save_results "$bad" "$badVal"
+    badVal="$(avg_ops "$bad" "$test")"
   fi
 
   [[ goodVal -gt badVal ]] || { echo "Initial good threshold [$goodVal] must be > initial bad threshold [$badVal]. Cannot bisect. Aborting."; exit 1;  }
 
-  set_conf_val "goodThreshold" "$goodVal"
-  set_conf_val "badThreshold" "$badVal"
+  set_conf_val ".goodThreshold" "$goodVal"
+  set_conf_val ".badThreshold" "$badVal"
 
   log "Bisecting regression in [$test] using commit range [$good (known good),$bad (known bad)]"
   log "Thresholds [good >= $goodVal, bad <= $badVal]"

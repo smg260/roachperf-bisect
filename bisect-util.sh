@@ -8,8 +8,9 @@ short_hash() { local rev=$1
   git rev-parse --short "$rev"
 }
 
-create_conf_if_not_exists() {
+prepare_conf_for_update() {
   [[ -f $CONF_NAME ]] || echo "{}" > "$CONF_NAME"
+  mktemp
 }
 
 get_conf_val() { local key=$1
@@ -25,25 +26,29 @@ get_conf_val() { local key=$1
   fi
 }
 
-#create or update file
 set_conf_val() { local key=$1; local val=$2
-  create_conf_if_not_exists
-  updated=$(jq ". += {\"$key\": \"$val\"}" "$CONF_NAME")
-  echo "$updated" > "$CONF_NAME"
+  tmp_file=$(prepare_conf_for_update)
+  jq "$key = \"$val\"" "$CONF_NAME" > "$tmp_file" && mv "$tmp_file" "$CONF_NAME"
 }
 
-set_hash_result() { local hash=$1; local val=$2
-  create_conf_if_not_exists
-  updated=$(jq ".hashResults += {\"$hash\": \"$val\"}" "$CONF_NAME")
-  echo "$updated" > "$CONF_NAME"
+save_results() { local hash=$1; local test=$2
+  tmp_file=$(prepare_conf_for_update)
+  #delete any existing result
+  jq "del(.hashResults.\"$hash\")" "$CONF_NAME" > "$tmp_file" && mv "$tmp_file" "$CONF_NAME"
+  #glob must be unquoted so the shell expands
+  for file in artifacts/$hash*/$test/run_*/*.perf/stats.json; do
+    value=$(jq_exec "$file") # Replace "calculate" with your calculation command
+    append_result "$hash" "$value"
+  done
 }
 
-get_hash_result() { local hash=$1
-  get_conf_val ".hashResults.\"$hash\""
+append_result() { local hash=$1; local result=$2;
+  tmp_file=$(prepare_conf_for_update)
+  jq ".hashResults.\"$hash\" += [$result]" "$CONF_NAME" > "$tmp_file" && mv "$tmp_file" "$CONF_NAME"
 }
 
-calc_avg_ops() { local hash=$1; local test=$2
-  jq_exec "artifacts/$hash*/$test/run_*/*.perf/stats.json"
+avg_ops() { local hash=$1
+  jq -r ".hashResults.\"$hash\" | add / length" $CONF_NAME || get_conf_val ".hashResults.\"$hash\""
 }
 
 jq_exec() {
@@ -148,18 +153,18 @@ prompt_user() { local hash=$1; local ops=$2;
     "Good")
       if [[ ops -gt 0 ]]; then
         log "[$hash] Average ops/s: [$ops]. User marked as good. Threshold updated."
-        set_conf_val "goodThreshold" "$ops"
+        set_conf_val ".goodThreshold" "$ops"
       else
-        set_hash_result "$hash" "USER_GOOD"
+        set_conf_val ".hashResults.\"$hash\"" "USER_GOOD"
         log "[$hash] Interrupted. User marked as good. Bisection will restart with updated bounds"
       fi
       return 0;;
     "Bad")
       if [[ ops -gt 0 ]]; then
         log "[$hash] Average ops/s: [$ops]. User marked as bad. Threshold updated."
-        set_conf_val "badThreshold" "$ops"
+        set_conf_val ".badThreshold" "$ops"
       else
-        set_hash_result "$hash" "USER_BAD"
+        set_conf_val ".hashResults.\"$hash\"" "USER_BAD"
         log "[$hash] Interrupted. User marked as bad. Bisection will restart with updated bounds"
       fi
       return 1;;
@@ -167,7 +172,7 @@ prompt_user() { local hash=$1; local ops=$2;
       if [[ ops -gt 0 ]]; then
         log "[$hash] Average ops/s: [$ops]. User skipped."
       else
-        set_hash_result "$hash" "USER_SKIP"
+        set_conf_val ".hashResults.\"$hash\"" "USER_SKIP"
         log "[$hash] Interrupted. User skipped"
       fi
       return 125;;
