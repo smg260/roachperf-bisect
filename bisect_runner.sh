@@ -92,8 +92,8 @@ else
 
   [[ goodVal -gt badVal ]] || { echo "Initial good threshold [$goodVal] must be > initial bad threshold [$badVal]. Cannot bisect. Aborting."; exit 1;  }
 
-  set_conf_val ".goodThreshold" "$goodVal"
-  set_conf_val ".badThreshold" "$badVal"
+  set_num_conf_val ".goodThreshold" "$goodVal"
+  set_num_conf_val ".badThreshold" "$badVal"
 
   log "Bisecting regression in [$test] using commit range [$good (known good),$bad (known bad)]"
   log "Thresholds [good >= $goodVal, bad <= $badVal]"

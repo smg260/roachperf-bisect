@@ -13,6 +13,8 @@ prepare_conf_for_update() {
   mktemp
 }
 
+#n.b since we're using -r, there is no difference between "100" and 100 even if in the json they
+# are represented as a string and number respectively
 get_conf_val() { local key=$1
   if [ ! -f "$CONF_NAME" ]; then
     echo ""
@@ -29,6 +31,11 @@ get_conf_val() { local key=$1
 set_conf_val() { local key=$1; local val=$2
   tmp_file=$(prepare_conf_for_update)
   jq "$key = \"$val\"" "$CONF_NAME" > "$tmp_file" && mv "$tmp_file" "$CONF_NAME"
+}
+
+set_num_conf_val() { local key=$1; local val=$2
+  tmp_file=$(prepare_conf_for_update)
+  jq "$key = $val" "$CONF_NAME" > "$tmp_file" && mv "$tmp_file" "$CONF_NAME"
 }
 
 save_results() { local hash=$1; local test=$2
@@ -153,7 +160,7 @@ prompt_user() { local hash=$1; local ops=$2;
     "Good")
       if [[ ops -gt 0 ]]; then
         log "[$hash] Average ops/s: [$ops]. User marked as good. Threshold updated."
-        set_conf_val ".goodThreshold" "$ops"
+        set_num_conf_val ".goodThreshold" "$ops"
       else
         set_conf_val ".hashResults.\"$hash\"" "USER_GOOD"
         log "[$hash] Interrupted. User marked as good. Bisection will restart with updated bounds"
@@ -162,7 +169,7 @@ prompt_user() { local hash=$1; local ops=$2;
     "Bad")
       if [[ ops -gt 0 ]]; then
         log "[$hash] Average ops/s: [$ops]. User marked as bad. Threshold updated."
-        set_conf_val ".badThreshold" "$ops"
+        set_num_conf_val ".badThreshold" "$ops"
       else
         set_conf_val ".hashResults.\"$hash\"" "USER_BAD"
         log "[$hash] Interrupted. User marked as bad. Bisection will restart with updated bounds"
