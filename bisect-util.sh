@@ -44,7 +44,7 @@ save_results() { local hash=$1; local test=$2
   jq "del(.hashResults.\"$hash\")" "$CONF_NAME" > "$tmp_file" && mv "$tmp_file" "$CONF_NAME"
   #glob must be unquoted so the shell expands
   for file in artifacts/$hash*/$test/run_*/*.perf/stats.json; do
-    value=$(jq_exec "$file") # Replace "calculate" with your calculation command
+    value=$(jq_exec "$file")
     append_result "$hash" "$value"
   done
 }
@@ -54,8 +54,9 @@ append_result() { local hash=$1; local result=$2;
   jq ".hashResults.\"$hash\" += [$result]" "$CONF_NAME" > "$tmp_file" && mv "$tmp_file" "$CONF_NAME"
 }
 
+#round the result so it plays nicely in bash
 avg_ops() { local hash=$1
-  jq -r ".hashResults.\"$hash\" | add / length" $CONF_NAME || get_conf_val ".hashResults.\"$hash\""
+  jq -r ".hashResults.\"$hash\" | add / length | rint" "$CONF_NAME" || get_conf_val ".hashResults.\"$hash\""
 }
 
 jq_exec() {
@@ -71,7 +72,7 @@ jq_exec() {
   jq -sc "$jq_expression" $@
 }
 
-test_hash() { local hash=$1; local test=$2; local count=$3
+test_hash() { local hash=$1; local test=$2; local count=$3; local cloud=$4
   {
     abase="artifacts/${hash}"
     if [ -d "$abase/$test" ]; then
@@ -89,8 +90,9 @@ test_hash() { local hash=$1; local test=$2; local count=$3
       "--artifacts" "${abase}/"
       "--count" "${count}"
       "--cpu-quota" "640"
+      "--cloud" "${cloud}"
     )
-    args+=("${@:4}")
+    args+=("${@:5}")
     "${abase}/roachtest" "${args[@]}"
   } &> "$BISECT_DIR/$hash-test.log"
 }

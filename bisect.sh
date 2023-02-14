@@ -3,6 +3,7 @@
 test=$1
 count=$2
 duration_mins=$3
+cloud=$4
 
 SCRIPT_DIR=$(dirname "$0")
 . "$SCRIPT_DIR"/bisect-util.sh
@@ -23,8 +24,8 @@ case $hashResults in
     exit 128
     ;;
   "")
-    build_hash "$CURRENT_HASH" "$duration_mins" &> "$BISECT_DIR/$CURRENT_HASH-build.log"
-    test_hash "$CURRENT_HASH" "$test" "$count" &> "$BISECT_DIR/$CURRENT_HASH-run.log"
+    build_hash "$CURRENT_HASH" "$duration_mins"
+    test_hash "$CURRENT_HASH" "$test" "$count" "$cloud"
     save_results "$CURRENT_HASH" "$test"
     ;;
   *) # we have saved results

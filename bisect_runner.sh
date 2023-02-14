@@ -3,21 +3,22 @@
 set -ex
 
 #these can be parameterised
-test="ycsb/B/nodes=3"
+test="kv0/enc=false/nodes=3/batch=16"
 branch="origin/master"
+cloud="gce"
 
 #use dates OR hashes, but not both
-#from="2022-07-05 09:00:00Z"
-#to="2022-07-07 22:00:00Z"
-good=29474e57ade2cd43f834be7b4ba8428e80dded0b
-bad=d7808e8a046d37536e4964f51ddb0c6fefc5f1ae
+from="2023-02-02 09:00:00Z"
+to="2023-02-04 22:00:00Z"
+#good=29474e57ade2cd43f834be7b4ba8428e80dded0b
+#bad=d7808e8a046d37536e4964f51ddb0c6fefc5f1ae
 
 count=4
 duration_mins=10
 
 #bisect_dir="${test//[^[:alnum:]]/-}/${branch//[^[:alnum:]]/-}/$from,$to"
 #explicity set bisect dir
-export BISECT_DIR=/home/miral/workspace/bisections/ycsb-test
+export BISECT_DIR=/home/miral/workspace/bisections/kv0-false-3-16-gce-20230202-20230204
 
 # first-parent is good for release branches where we generally know the merge parents are OK
 # git bisect start --first-parent
@@ -67,14 +68,14 @@ else
   if [ -z "$goodVal" ]; then
    echo "[$good] No good threshold found. Will build/run this hash to collect an initial good value."
    build_hash "$good" "$duration_mins"
-   test_hash "$good" "$test" $count &
+   test_hash "$good" "$test" $count "$cloud" &
   fi
 
   badVal=$(avg_ops "$bad")
   if [ -z "$badVal" ]; then
    echo "[$bad] No bad threshold specified. Will build/run this hash to collect an initial bad value."
    build_hash "$bad" "$duration_mins"
-   test_hash "$bad" "$test" $count &
+   test_hash "$bad" "$test" $count "$cloud" &
   fi
 
   wait
@@ -86,7 +87,7 @@ else
   fi
 
   if [ -z "$badVal" ]; then
-    save_results "$bad" "$badVal"
+    save_results "$bad" "$test"
     badVal="$(avg_ops "$bad" "$test")"
   fi
 
@@ -103,7 +104,7 @@ else
   git bisect bad "$bad"
 fi
 
-git bisect run "$SCRIPT_DIR"/bisect.sh "$test" "$count" "$duration_mins"
+git bisect run "$SCRIPT_DIR"/bisect.sh "$test" "$count" "$duration_mins" "$cloud"
 
 log "Bisection complete. Suspect commit:"
 git bisect visualize &>> "$INFO_LOG"
