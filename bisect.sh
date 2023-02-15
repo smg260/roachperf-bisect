@@ -4,6 +4,7 @@ test=$1
 count=$2
 duration_mins=$3
 cloud=$4
+metric=$5
 
 SCRIPT_DIR=$(dirname "$0")
 . "$SCRIPT_DIR"/bisect-util.sh
@@ -32,17 +33,17 @@ case $hashResults in
     ;;
 esac
 
-avgOps=$(avg_ops "$CURRENT_HASH")
-goodThreshold=$(get_conf_val ".goodThreshold")
-badThreshold=$(get_conf_val ".badThreshold")
+hashMetric=$(hash_metric "$CURRENT_HASH", "$metric")
+goodThreshold=$(get_conf_val ".thresholds.$metric.good")
+badThreshold=$(get_conf_val ".thresholds.$metric.bad")
 
-if [ -n "$goodThreshold" ] && [[ avgOps -ge goodThreshold ]]; then
-  log "[$CURRENT_HASH] Average ops/s: [$avgOps]. Auto marked as good." "$LOG_NAME"
+if [ -n "$goodThreshold" ] && [[ hashMetric -ge goodThreshold ]]; then
+  log "[$CURRENT_HASH] $metric ops/s: [$hashMetric]. Auto marked as good." "$LOG_NAME"
   exit 0;
-elif [ -n "$badThreshold" ] && [[ avgOps -le badThreshold ]]; then
-  log "[$CURRENT_HASH] Average ops/s: [$avgOps]. Auto marked as bad." "$LOG_NAME"
+elif [ -n "$badThreshold" ] && [[ hashMetric -le badThreshold ]]; then
+  log "[$CURRENT_HASH] $metric ops/s: [$hashMetric]. Auto marked as bad." "$LOG_NAME"
   exit 1;
 else
   # we don't have thresholds to compare, or the value doesn't meet them
-  prompt_user "$CURRENT_HASH" "$avgOps"
+  prompt_user "$CURRENT_HASH" "$hashMetric"
 fi

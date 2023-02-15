@@ -54,9 +54,28 @@ append_result() { local hash=$1; local result=$2;
   jq ".hashResults.\"$hash\" += [$result]" "$CONF_NAME" > "$tmp_file" && mv "$tmp_file" "$CONF_NAME"
 }
 
+hash_metric() { local hash=$1; local metric=$2
+  case $metric in
+    average|avg)
+      avg_ops "$hash"
+      ;;
+    median|med)
+      median_ops "$hash"
+      ;;
+    *)
+      echo "Unknown metric: $metric"
+      exit 1
+      ;;
+  esac
+}
+
 #round the result so it plays nicely in bash
-avg_ops() { local hash=$1
+average_ops() { local hash=$1
   jq -r ".hashResults.\"$hash\" | add / length | rint" "$CONF_NAME" || get_conf_val ".hashResults.\"$hash\""
+}
+
+median_ops() { local hash=$1
+  jq -r ".hashResults.\"$hash\" | sort | if length % 2 == 0 then [.[length/2 - 1, length/2]] | add / 2 | rint else .[length/2|floor] end" "$CONF_NAME"
 }
 
 jq_exec() {
@@ -147,11 +166,11 @@ build_hash() { local hash=$1; local duration_override_mins=$2
 }
 
 # if ops == -1, this is a trapped ^C from which we want to collect user input
-prompt_user() { local hash=$1; local ops=$2;
+prompt_user() { local hash=$1; local ops=$2; local metric=$3
 
   echo -ne '\a'
   if [[ ops -gt 0 ]]; then
-    PS3="[$hash] Average ops/s is $ops. Choose: "
+    PS3="[$hash] $metric ops/s is $ops. Choose: "
   else
     PS3="[$hash] Interrupt: mark current and continue, or just quit?"
   fi
@@ -161,8 +180,8 @@ prompt_user() { local hash=$1; local ops=$2;
     case $ch in
     "Good")
       if [[ ops -gt 0 ]]; then
-        log "[$hash] Average ops/s: [$ops]. User marked as good. Threshold updated."
-        set_num_conf_val ".goodThreshold" "$ops"
+        log "[$hash] $metric ops/s: [$ops]. User marked as good. Threshold updated."
+        set_num_conf_val ".thresholds.$metric.good" "$ops"
       else
         set_conf_val ".hashResults.\"$hash\"" "USER_GOOD"
         log "[$hash] Interrupted. User marked as good. Bisection will restart with updated bounds"
@@ -170,8 +189,8 @@ prompt_user() { local hash=$1; local ops=$2;
       return 0;;
     "Bad")
       if [[ ops -gt 0 ]]; then
-        log "[$hash] Average ops/s: [$ops]. User marked as bad. Threshold updated."
-        set_num_conf_val ".badThreshold" "$ops"
+        log "[$hash] $metric ops/s: [$ops]. User marked as bad. Threshold updated."
+        set_num_conf_val ".thresholds.$metric.bad" "$ops"
       else
         set_conf_val ".hashResults.\"$hash\"" "USER_BAD"
         log "[$hash] Interrupted. User marked as bad. Bisection will restart with updated bounds"
@@ -179,7 +198,7 @@ prompt_user() { local hash=$1; local ops=$2;
       return 1;;
     "Skip")
       if [[ ops -gt 0 ]]; then
-        log "[$hash] Average ops/s: [$ops]. User skipped."
+        log "[$hash] $metric ops/s: [$ops]. User skipped."
       else
         set_conf_val ".hashResults.\"$hash\"" "USER_SKIP"
         log "[$hash] Interrupted. User skipped"
