@@ -24,7 +24,7 @@ case $hashResults in
   USER_SKIP)
     exit 128
     ;;
-  "")
+  ""|[])
     build_hash "$CURRENT_HASH" "$duration_mins"
     test_hash "$CURRENT_HASH" "$test" "$count" "$cloud"
     save_results "$CURRENT_HASH" "$test"
@@ -33,7 +33,7 @@ case $hashResults in
     ;;
 esac
 
-hashMetric=$(hash_metric "$CURRENT_HASH", "$metric")
+hashMetric=$(hash_metric "$CURRENT_HASH" "$metric")
 goodThreshold=$(get_conf_val ".thresholds.$metric.good")
 badThreshold=$(get_conf_val ".thresholds.$metric.bad")
 
@@ -45,5 +45,5 @@ elif [ -n "$badThreshold" ] && [[ hashMetric -le badThreshold ]]; then
   exit 1;
 else
   # we don't have thresholds to compare, or the value doesn't meet them
-  prompt_user "$CURRENT_HASH" "$hashMetric"
+  prompt_user "$CURRENT_HASH" "$hashMetric" "$metric"
 fi

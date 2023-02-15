@@ -6,20 +6,20 @@ set -ex
 test="kv0/enc=false/nodes=3/batch=16"
 branch="origin/master"
 cloud="gce"
-count=4
-duration_mins=10
+count=5
+duration_mins=15
 # median|average
 metric="median"
 
 #use dates OR hashes, but not both
-from="2023-02-02 09:00:00Z"
-to="2023-02-04 22:00:00Z"
-#goodHash=29474e57ade2cd43f834be7b4ba8428e80dded0b
-#badHash=d7808e8a046d37536e4964f51ddb0c6fefc5f1ae
+#from="2023-02-02 09:00:00Z"
+#to="2023-02-04 22:00:00Z"
+goodHash=44d9f3c8b7bd46839187cea69eaec640c080ac05
+badHash=5fbcd8a8deac0205c7df38e340c1eb9692854383
 
 #bisect_dir="${test//[^[:alnum:]]/-}/${branch//[^[:alnum:]]/-}/$from,$to"
 #explicity set bisect dir, and make visible to bisect-util.sh
-export BISECT_DIR=/home/miral/workspace/bisections/kv0-false-3-16-gce-20230202-20230204
+export BISECT_DIR=/home/miral/workspace/bisections/kv0-false-3-16-gce-44d9-5fbc
 
 # first-parent is goodHash for release branches where we generally know the merge parents are OK
 # git bisect start --first-parent
@@ -101,8 +101,8 @@ else
   log "Thresholds [good >= $goodVal, bad <= $badVal]"
 
   $BISECT_START_CMD
-  git bisect goodHash "$goodHash"
-  git bisect badHash "$badHash"
+  git bisect good "$goodHash"
+  git bisect bad "$badHash"
 fi
 
 git bisect run "$SCRIPT_DIR"/bisect.sh "$test" "$count" "$duration_mins" "$cloud" "$metric"

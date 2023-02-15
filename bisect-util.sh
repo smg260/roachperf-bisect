@@ -57,7 +57,7 @@ append_result() { local hash=$1; local result=$2;
 hash_metric() { local hash=$1; local metric=$2
   case $metric in
     average|avg)
-      avg_ops "$hash"
+      average_ops "$hash"
       ;;
     median|med)
       median_ops "$hash"
@@ -75,7 +75,7 @@ average_ops() { local hash=$1
 }
 
 median_ops() { local hash=$1
-  jq -r ".hashResults.\"$hash\" | sort | if length % 2 == 0 then [.[length/2 - 1, length/2]] | add / 2 | rint else .[length/2|floor] end" "$CONF_NAME"
+  jq -r ".hashResults.\"$hash\" | sort | if length % 2 == 0 then [.[length/2 - 1, length/2]] | add / 2 | rint else .[length/2|floor] end" "$CONF_NAME"  || get_conf_val ".hashResults.\"$hash\""
 }
 
 jq_exec() {
@@ -213,7 +213,7 @@ prompt_user() { local hash=$1; local ops=$2; local metric=$3
 }
 
 [[ -n $BISECT_DIR ]] || export BISECT_DIR="."
-[[ -d ./pkg/cmd/cockroach ]] || { echo "bisection must be run from cockroach root"; return 1; }
+#[[ -d ./pkg/cmd/cockroach ]] || { echo "bisection must be run from cockroach root"; return 1; }
 
 mkdir -p "$BISECT_DIR"
 
