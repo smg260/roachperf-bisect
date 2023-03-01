@@ -91,6 +91,8 @@ jq_exec() {
   jq -sc "$jq_expression" $@
 }
 
+# Ensure the CPU quota is high enough to account for number of concurrent runs
+# cpu-quota >= (number of concurrent runs) * (cluster size) * (CPU per node)
 test_hash() { local hash=$1; local test=$2; local count=$3; local cloud=$4
   {
     abase="artifacts/${hash}"
@@ -213,7 +215,7 @@ prompt_user() { local hash=$1; local ops=$2; local metric=$3
 }
 
 [[ -n $BISECT_DIR ]] || export BISECT_DIR="."
-#[[ -d ./pkg/cmd/cockroach ]] || { echo "bisection must be run from cockroach root"; return 1; }
+[[ -d ./pkg/cmd/cockroach ]] || { echo "bisection must be run from cockroach root"; return 1; }
 
 mkdir -p "$BISECT_DIR"
 
