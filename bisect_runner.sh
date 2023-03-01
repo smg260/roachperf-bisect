@@ -5,9 +5,9 @@ set -ex
 #these can be parameterised
 test="kv0/enc=false/nodes=3/batch=16"
 branch="origin/master"
-cloud="gce"
-count=5
-duration_mins=15
+cloud="aws"
+count=3
+duration_mins=10
 # median|average
 metric="median"
 
@@ -19,7 +19,7 @@ badHash=5fbcd8a8deac0205c7df38e340c1eb9692854383
 
 #bisect_dir="${test//[^[:alnum:]]/-}/${branch//[^[:alnum:]]/-}/$from,$to"
 #explicity set bisect dir, and make visible to bisect-util.sh
-export BISECT_DIR=/home/miral/workspace/bisections/kv0-false-3-16-gce-44d9-5fbc
+export BISECT_DIR=/home/miral/workspace/bisections/issues/97790
 
 # first-parent is goodHash for release branches where we generally know the merge parents are OK
 # git bisect start --first-parent

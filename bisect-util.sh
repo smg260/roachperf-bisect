@@ -213,7 +213,7 @@ prompt_user() { local hash=$1; local ops=$2; local metric=$3
 }
 
 [[ -n $BISECT_DIR ]] || export BISECT_DIR="."
-#[[ -d ./pkg/cmd/cockroach ]] || { echo "bisection must be run from cockroach root"; return 1; }
+[[ -d ./pkg/cmd/cockroach ]] || { echo "bisection must be run from cockroach root"; return 1; }
 
 mkdir -p "$BISECT_DIR"
 
