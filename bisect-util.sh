@@ -222,4 +222,4 @@ mkdir -p "$BISECT_DIR"
 export BISECT_LOG="$BISECT_DIR/bisect.log"
 export INFO_LOG="$BISECT_DIR/info.log"
 export CONF_NAME="$BISECT_DIR/config.json"
-export GCE_PROJECT=andrei-jepsen
+export GCE_PROJECT=cockroach-ephemeral
